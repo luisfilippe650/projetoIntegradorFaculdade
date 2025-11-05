@@ -1,0 +1,177 @@
+#include <Servo.h>
+
+// === PROTÓTIPOS ===
+void andar();
+void parar();
+void direita();
+void esquerda();
+void servomotor();
+int mediaLeitura(int pino);
+
+// === SENSORES DE FOGO ===
+#define sensorFogoEsquerdo A2
+#define sensorFogoFrente   A1
+#define sensorFogoDireita  A0
+
+// === BOMBA E SERVO ===
+#define bombaDeAgua A5
+#define SERVO_PIN 2
+Servo meuServo;
+int posicao;
+
+// === PONTE H ===
+#define ENA 10
+#define EN1 9
+#define EN2 8
+#define EN3 6
+#define EN4 5
+#define ENB 4
+
+// === VARIÁVEIS ===
+int valorSensorEsquerdo;
+int valorSensorFrente;
+int valorSensorDireito;
+
+// === CONFIGURAÇÃO ===
+void setup() {
+  Serial.begin(9600);
+
+  // Servo
+  meuServo.attach(SERVO_PIN);
+  meuServo.write(0);
+
+  // Sensores
+  pinMode(sensorFogoEsquerdo, INPUT);
+  pinMode(sensorFogoFrente, INPUT);
+  pinMode(sensorFogoDireita, INPUT);
+
+  // Motores
+  pinMode(EN1, OUTPUT);
+  pinMode(EN2, OUTPUT);
+  pinMode(EN3, OUTPUT);
+  pinMode(EN4, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+
+  // Bomba
+  pinMode(bombaDeAgua, OUTPUT);
+
+  Serial.println("🔥 Sistema de detecção de fogo iniciado...");
+}
+
+// === LOOP PRINCIPAL ===
+void loop() {
+  valorSensorEsquerdo = mediaLeitura(sensorFogoEsquerdo);
+  valorSensorFrente   = mediaLeitura(sensorFogoFrente);
+  valorSensorDireito  = mediaLeitura(sensorFogoDireita);
+
+  Serial.print("Esq: ");
+  Serial.print(valorSensorEsquerdo);
+  Serial.print(" | Frente: ");
+  Serial.print(valorSensorFrente);
+  Serial.print(" | Dir: ");
+  Serial.println(valorSensorDireito);
+
+  int LIMIAR_DETECCAO = 500; // fogo detectado
+  int LIMIAR_PERTO = 250;    // fogo muito próximo
+
+  // === Nenhum fogo detectado ===
+  if (valorSensorEsquerdo > LIMIAR_DETECCAO && valorSensorFrente > LIMIAR_DETECCAO && valorSensorDireito > LIMIAR_DETECCAO) {
+    parar();
+    Serial.println("Nenhum fogo detectado — aguardando...");
+    delay(200);
+    return;
+  }
+
+  int menorValor = min(valorSensorEsquerdo, min(valorSensorFrente, valorSensorDireito));
+
+  // === Fogo à frente ===
+  if (menorValor == valorSensorFrente) {
+    Serial.println("🔥 Fogo detectado à FRENTE!");
+
+    if (valorSensorFrente > LIMIAR_PERTO && valorSensorFrente < LIMIAR_DETECCAO) {
+      Serial.println("➡ Fogo à frente, aproximando...");
+      andar();
+    } 
+    else if (valorSensorFrente <= LIMIAR_PERTO) {
+      Serial.println("🚒 Fogo próximo! Ativando bomba e servo...");
+      parar();
+      digitalWrite(bombaDeAgua, HIGH);
+      servomotor();
+      delay(3000);
+      digitalWrite(bombaDeAgua, LOW);
+    }
+  } 
+  else if (menorValor == valorSensorEsquerdo) {
+    Serial.println("🔥 Fogo detectado à ESQUERDA! Virando...");
+    esquerda();
+  } 
+  else if (menorValor == valorSensorDireito) {
+    Serial.println("🔥 Fogo detectado à DIREITA! Virando...");
+    direita();
+  }
+
+  delay(100);
+}
+
+// === FUNÇÃO DE MÉDIA ===
+int mediaLeitura(int pino) {
+  long soma = 0;
+  for (int i = 0; i < 5; i++) {
+    soma += analogRead(pino);
+    delay(3);
+  }
+  return soma / 5;
+}
+
+// === FUNÇÃO SERVO ===
+void servomotor() {
+  for (posicao = 0; posicao <= 90; posicao++) {
+    meuServo.write(posicao);
+    delay(15);
+  }
+  delay(1000);
+
+  for (posicao = 90; posicao >= 0; posicao--) {
+    meuServo.write(posicao);
+    delay(15);
+  }
+  delay(1000);
+}
+
+// === MOVIMENTOS ===
+void andar() {
+  digitalWrite(EN1, HIGH);
+  digitalWrite(EN2, LOW);
+  digitalWrite(EN3, HIGH);
+  digitalWrite(EN4, LOW);
+  analogWrite(ENA, 180);
+  analogWrite(ENB, 180);
+}
+
+void parar() {
+  digitalWrite(EN1, LOW);
+  digitalWrite(EN2, LOW);
+  digitalWrite(EN3, LOW);
+  digitalWrite(EN4, LOW);
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 0);
+}
+
+void direita() {
+  digitalWrite(EN1, LOW);
+  digitalWrite(EN2, HIGH);
+  digitalWrite(EN3, HIGH);
+  digitalWrite(EN4, LOW);
+  analogWrite(ENA, 160);
+  analogWrite(ENB, 160);
+}
+
+void esquerda() {
+  digitalWrite(EN1, HIGH);
+  digitalWrite(EN2, LOW);
+  digitalWrite(EN3, LOW);
+  digitalWrite(EN4, HIGH);
+  analogWrite(ENA, 160);
+  analogWrite(ENB, 160);
+}
