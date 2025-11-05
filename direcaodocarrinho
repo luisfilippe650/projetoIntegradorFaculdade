@@ -1,0 +1,100 @@
+// === PONTE H ===
+#define ENA 10
+#define EN1 9
+#define EN2 8
+#define EN3 6
+#define EN4 5
+#define ENB 4
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(EN1, OUTPUT);
+  pinMode(EN2, OUTPUT);
+  pinMode(EN3, OUTPUT);
+  pinMode(EN4, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+
+  Serial.println("🚗 Teste: Frente, Ré e Direita iniciado!");
+}
+
+void loop() {
+  Serial.println("➡ Andando para frente...");
+  andar();
+  delay(2000);
+
+  Serial.println("⏹ Parando...");
+  parar();
+  delay(1000);
+
+  Serial.println("⬅ Andando para trás...");
+  re();
+  delay(2000);
+
+  Serial.println("⏹ Parando...");
+  parar();
+  delay(1000);
+
+  Serial.println("↪ Virando para direita...");
+  direita();
+  delay(1500);
+
+  Serial.println("⏹ Parando...");
+  parar();
+  delay(2000);
+
+Serial.println("⏹ VIRANDO ESQUERDA");
+  esquerda();
+  delay(2000);
+}
+
+// === FUNÇÕES DE MOVIMENTO ===
+
+// Anda para frente
+void andar() {
+  digitalWrite(EN1, HIGH);
+  digitalWrite(EN2, LOW);
+  digitalWrite(EN3, LOW);
+  digitalWrite(EN4, HIGH);
+  analogWrite(ENA, 180);
+  analogWrite(ENB, 180);
+}
+
+// Anda para trás (ré)
+void re() {
+  digitalWrite(EN1, LOW);
+  digitalWrite(EN2, HIGH);
+  digitalWrite(EN3, HIGH);
+  digitalWrite(EN4, LOW);
+  analogWrite(ENA, 180);
+  analogWrite(ENB, 180);
+}
+
+// Vira para a direita
+void direita() {
+  digitalWrite(EN1, LOW);   // Motor esquerdo para trás
+  digitalWrite(EN2, HIGH);
+  digitalWrite(EN3, LOW);   // Motor direito parado ou levemente para frente
+  digitalWrite(EN4, LOW);
+  analogWrite(ENA, 160);
+  analogWrite(ENB, 160);
+}
+void esquerda() {
+  digitalWrite(EN1, LOW);   // Motor esquerdo para trás
+  digitalWrite(EN2, LOW);
+  digitalWrite(EN3, HIGH);   // Motor direito parado ou levemente para frente
+  digitalWrite(EN4, LOW);
+  analogWrite(ENA, 160);
+  analogWrite(ENB, 160);
+}
+
+// Para os motores
+void parar() {
+  digitalWrite(EN1, LOW);
+  digitalWrite(EN2, LOW);
+  digitalWrite(EN3, LOW);
+  digitalWrite(EN4, LOW);
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 0);
+}
