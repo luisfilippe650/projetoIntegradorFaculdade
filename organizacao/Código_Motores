@@ -1,0 +1,116 @@
+//motor lado direito
+const int enA = 10;
+const int in1 = 9;
+const int in2 = 8;
+//motor lado esquerdo
+const int enB = 4;
+const int in3 = 6;
+const int in4 = 5;
+
+int velocidade = 200;
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(enA, OUTPUT);
+  pinMode(enB, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
+
+  analogWrite(enA, velocidade);
+  analogWrite(enB, velocidade);
+
+  parar(); // começa parado
+}
+
+//Loop principal
+void loop() {
+  mov_fnt();         // anda pra frente
+  delay(2000);
+
+  manobraDireita();   // vira à direita
+  delay(1000);
+
+  manobraEsquerda();  // vira à esquerda
+  delay(1000);
+
+  mov_tras();           // anda pra trás
+  delay(2000);
+
+  parar();
+  delay(2000);
+}
+
+//Movimentos
+void mov_fnt(){
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+}
+void mov_tras(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+}
+void mov_dir(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+}
+void mov_esq(){
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+}
+void parar(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, LOW);
+}
+
+void manobraDireita() {
+  // anda pra trás um pouquinho
+  mov_tras();
+  delay(1000);
+
+  // para rapidamente
+  parar();
+  delay(300);
+
+  // vira pra direita
+  mov_dir();
+  delay(800);
+
+  // e volta a seguir em frente
+  mov_fnt();
+  delay(1500);
+
+  parar();
+}
+
+void manobraEsquerda() {
+  // anda pra trás um pouquinho
+  mov_tras();
+  delay(1000);
+
+  // para rapidamente
+  parar();
+  delay(300);
+
+  // vira pra esquerda
+  mov_esq();
+  delay(800);
+
+  // e volta a seguir em frente
+  mov_fnt();
+  delay(1500);
+
+  parar();
+}
