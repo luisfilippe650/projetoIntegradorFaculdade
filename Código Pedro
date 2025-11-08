@@ -12,6 +12,8 @@ const int in4 = 5;
 
 int velocidade = 200;
 
+int patrulha = 0;
+
 //sensores
 int sensor_F = A1;
 int sensor_E = A2;
@@ -25,6 +27,7 @@ int result_F;
 int result_E;
 int result_D;
 
+#define bomba A5
 #define SERVO_PIN 2
 Servo meuServo;
 int posicao;
@@ -50,6 +53,8 @@ void setup() {
 
   meuServo.attach(SERVO_PIN);
   meuServo.write(0);
+
+  pinMode(bomba, OUTPUT);
 }
 
 void loop() {
@@ -73,25 +78,30 @@ void loop() {
   if (result_F <= 200) {
     parar();
     servo();
+    digitalWrite(bomba, 1);
     Serial.println("fogo bem perto...");
   }
 
   else if (result_F >= 201 && result_F <= 800) {
     mov_fnt();
+    digitalWrite(bomba, 0);
     Serial.println("fogo longe...");
   }
 
   else if ( result_E < 700){
     manobra_E();
+    digitalWrite(bomba, 0);
     Serial.println("virando para esquerda");
   }
 
   else if (result_D < 700){
     manobra_D();
+    digitalWrite(bomba, 0);
     Serial.println("virando para direita");
   }
   else{
     parar();
+    digitalWrite(bomba, 0);
     Serial.println("nenhum fogo detectado");
   }
   
@@ -182,7 +192,7 @@ void manobra_E() {
   parar();
 }
 
-void mov_patrulha(){
+/*void mov_patrulha(){
   Serial.println("carrinho entrando no modo patrulha....");
 
   int vel = random(0,6);
@@ -190,30 +200,38 @@ void mov_patrulha(){
   switch(vel){
     case 1: {
       mov_fnt();
+      delay(2000);
       break;
     }
     case 2: {
       mov_tras();
+      delay(2000);
       break;
     }
     case 3:{
       manobra_D();
+      delay(2000);
       break;
     }
     case 4: {
       manobra_E();
+      delay(2000);
       break;
     }
     case 5: {
       //virando 360
       mov_dir();
+      delay(1000);
       mov_dir();
+      delay(2000);
       break;
     }
     case 6: {
       mov_esq();
+      delay(1000);
       mov_esq();
+      delay(2000);
       break;
     }
   }
-}
+}*/
