@@ -25,7 +25,9 @@ int result_F;
 int result_E;
 int result_D;
 
-int Servo = 2;
+#define SERVO_PIN 2
+Servo meuServo;
+int posicao;
 
 void setup() {
   Serial.begin(9600);
@@ -46,7 +48,8 @@ void setup() {
   pinMode(sensor_E, INPUT);
   pinMode(sensor_D, INPUT);
 
-  meuServo.attach(Servo);
+  meuServo.attach(SERVO_PIN);
+  meuServo.write(0);
 }
 
 void loop() {
@@ -69,6 +72,7 @@ void loop() {
   // analisa o resultado
   if (result_F <= 200) {
     parar();
+    servo();
     Serial.println("fogo bem perto...");
   }
 
@@ -98,6 +102,20 @@ void loop() {
 int media(int a, int b, int c) {
   int resultado = (a + b + c) / 3;
   return resultado;
+}
+
+void servo(){
+  int position;
+
+  for(position = 0; position <= 120; position++){
+    meuServo.write(position);
+    delay(15);
+  }
+  for(position = 120; position >= 0; position--){
+    meuServo.write(position);
+    delay(15);
+  }
+  delay(1000);
 }
 
 //Movimentos
