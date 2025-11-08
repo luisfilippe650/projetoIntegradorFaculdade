@@ -5,16 +5,16 @@ int vetorFrente[3];
 int vetorEsquerdo[3]; 
 int vetorDireito[3]; 
 
-int sensorFrente;
-int sensorEsquerdo;
-int sensorDireito;
+int sensorFrente = A1;
+int sensorEsquerdo = A2;
+int sensorDireito = A0;
 
 int resultadoSensorFrente;
 int resultadoSensorEsquerdo;
 int resultadoSensorDireito;
 int visualizar;
 
-int patrulha;
+int patrulha = 0;
 
 //motor lado direito
 const int enA = 10;
@@ -94,7 +94,7 @@ void loop() {
     manobraDireita();
   }
 
-  else if(patrulha == 3 ){
+  else if(patrulha == 10 ){
     mov_patrulha();
     patrulha = 0; 
   }
@@ -103,7 +103,7 @@ void loop() {
     patrulha++;
   }
   
-  delay(2000);
+  delay(2500);
 }
 
 // função para calcular média
@@ -193,7 +193,6 @@ void mov_patrulha(){
   switch(vel){
     case 1: {
       mov_fnt();
-
       break;
     }
     case 2: {
