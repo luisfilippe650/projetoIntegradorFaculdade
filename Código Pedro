@@ -2,8 +2,8 @@
 #include <Servo.h>
 
 //motor lado direito
-const int enA = 10;
-const int in1 = 9;
+const int enA = 11;
+const int in1 = 7;
 const int in2 = 8;
 //motor lado esquerdo
 const int enB = 4;
@@ -28,9 +28,12 @@ int result_E;
 int result_D;
 
 #define bomba A5
-#define SERVO_PIN 2
+#define SERVO_PIN 3
 Servo meuServo;
 int posicao;
+
+#define LED_VERMELHO 12
+#define LED_VERDE 13
 
 void setup() {
   Serial.begin(9600);
@@ -55,6 +58,12 @@ void setup() {
   meuServo.write(0);
 
   pinMode(bomba, OUTPUT);
+
+  pinMode(LED_VERMELHO, OUTPUT);
+  pinMode(LED_VERDE, OUTPUT);
+
+  digitalWrite(LED_VERMELHO, LOW);
+  digitalWrite(LED_VERDE, HIGH);
 }
 
 void loop() {
@@ -80,29 +89,39 @@ void loop() {
     servo();
     digitalWrite(bomba, 1);
     Serial.println("fogo bem perto...");
+    digitalWrite(LED_VERMELHO, HIGH);
+    digitalWrite(LED_VERDE, LOW);
   }
 
   else if (result_F >= 201 && result_F <= 800) {
     mov_fnt();
     digitalWrite(bomba, 0);
     Serial.println("fogo longe...");
+    digitalWrite(LED_VERMELHO, HIGH);
+    digitalWrite(LED_VERDE, LOW);
   }
 
   else if ( result_E < 700){
     manobra_E();
     digitalWrite(bomba, 0);
-    Serial.println("virando para esquerda");
+    Serial.println("virando para esquerda");\
+    digitalWrite(LED_VERMELHO, HIGH);
+    digitalWrite(LED_VERDE, LOW);
   }
 
   else if (result_D < 700){
     manobra_D();
     digitalWrite(bomba, 0);
     Serial.println("virando para direita");
+    digitalWrite(LED_VERMELHO, HIGH);
+    digitalWrite(LED_VERDE, LOW);
   }
   else{
     parar();
     digitalWrite(bomba, 0);
     Serial.println("nenhum fogo detectado");
+    digitalWrite(LED_VERMELHO, LOW);
+    digitalWrite(LED_VERDE, HIGH);
   }
   
   delay(1000);
