@@ -1,0 +1,75 @@
+#include <math.h>
+
+int sensorFrente = A1;
+int sensorEsquerdo = A2;
+int sensorDireito = A0;
+
+int vetorFrente[3]; 
+int vetorEsquerdo[3]; 
+int vetorDireito[3]; 
+
+int resultadoSensorFrente;
+int resultadoSensorEsquerdo;
+int resultadoSensorDireito;
+int visualizar;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(sensorFrente, INPUT);
+  pinMode(sensorEsquerdo, INPUT);
+  pinMode(sensorDireito, INPUT);
+}
+
+void loop() {
+  visualizar = analogRead(sensorFrente);
+  // faz 3 leituras do sensor
+  for (int i = 0; i < 3; i++) { 
+    vetorFrente[i] = analogRead(sensorFrente);
+  }
+   for (int i = 0; i < 3; i++) { 
+    vetorEsquerdo[i] = analogRead(sensorEsquerdo);
+  }
+   for (int i = 0; i < 3; i++) { 
+    vetorDireito[i] = analogRead(sensorDireito);
+  }
+ 
+
+  // calcula a média das leituras
+  resultadoSensorFrente = media( vetorFrente[0],  vetorFrente[1],  vetorFrente[2]);
+  resultadoSensorEsquerdo = media(vetorEsquerdo[0], vetorEsquerdo[1], vetorEsquerdo[2]);
+  resultadoSensorDireito = media(vetorDireito[0], vetorDireito[1], vetorDireito[2]);
+
+  // analisa o resultado
+   if (resultadoSensorFrente <= 320) {
+    Serial.println("fogo bem perto...");
+    Serial.println(visualizar);
+    }
+
+  else if (resultadoSensorFrente >= 321 && resultadoSensorFrente <= 800) {
+      Serial.println("fogo longe...");
+      Serial.println(visualizar);
+  }
+
+  else if ( resultadoSensorEsquerdo < 700){
+    //carrinho ira virar
+    Serial.println("virando para esquerda");
+    
+  }
+
+  else if (resultadoSensorDireito < 700){
+    Serial.println("virando para direita");
+    
+  }
+  else{
+    Serial.println("nenhum fogo detectado");
+    
+  }
+  
+  delay(1000);
+}
+
+// função para calcular média
+int media(int a, int b, int c) {
+  int resultado = (a + b + c) / 3;
+  return resultado;
+}
