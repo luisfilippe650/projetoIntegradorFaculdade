@@ -2,15 +2,16 @@
 #include <Servo.h>
 
 //motor lado direito
-const int enA = 10;
-const int in1 = 9;
+const int enA = 11;
+const int in1 = 7;
 const int in2 = 8;
 //motor lado esquerdo
 const int enB = 4;
 const int in3 = 6;
 const int in4 = 5;
 
-int velocidade = 200;
+int velocidade = 200; // velocidade do motor
+
 int patrulha = 0;
 
 //sensores
@@ -26,9 +27,13 @@ int result_F;
 int result_E;
 int result_D;
 
-#define SERVO_PIN 2
+#define bomba A5
+#define SERVO_PIN 3
 Servo meuServo;
 int posicao;
+
+#define LED_VERMELHO 12
+#define LED_VERDE 13
 
 void setup() {
   Serial.begin(9600);
@@ -51,6 +56,14 @@ void setup() {
 
   meuServo.attach(SERVO_PIN);
   meuServo.write(0);
+
+  pinMode(bomba, OUTPUT);
+
+  pinMode(LED_VERMELHO, OUTPUT);
+  pinMode(LED_VERDE, OUTPUT);
+
+  digitalWrite(LED_VERMELHO, LOW);
+  digitalWrite(LED_VERDE, HIGH);
 }
 
 void loop() {
@@ -66,39 +79,49 @@ void loop() {
   }
  
   // calcula a média das leituras
-  result_F = media(vetor_F[0],  vetor_F[1],  vetor_F[2]);
+  result_F = media(vetor_F[0], vetor_F[1], vetor_F[2]);
   result_E = media(vetor_E[0], vetor_E[1], vetor_E[2]);
   result_D = media(vetor_D[0], vetor_D[1], vetor_D[2]);
 
   // analisa o resultado
-  if (result_F <= 200) {
-    parar();
-    servo();
-    Serial.println("fogo bem perto...");
-  }
-
-  else if (result_F >= 201 && result_F <= 800) {
-    mov_fnt();
-    Serial.println("fogo longe...");
-  }
-
-  else if ( result_E < 700){
+  
+  if ( result_E < 700){
     manobra_E();
-    Serial.println("virando para esquerda");
+    Serial.println("virando para esquerda");\
+    digitalWrite(LED_VERMELHO, HIGH);
+    digitalWrite(LED_VERDE, LOW);
   }
-
   else if (result_D < 700){
     manobra_D();
     Serial.println("virando para direita");
+    digitalWrite(LED_VERMELHO, HIGH);
+    digitalWrite(LED_VERDE, LOW);
+    }
+  else if (result_F <= 200) {
+    Serial.println("fogo bem perto...");
+    parar();
+    servo();
+    digitalWrite(bomba, 1);
+    delay(2000);
+    digitalWrite(LED_VERMELHO, HIGH);
+    digitalWrite(LED_VERDE, LOW);
+    }
+  else if (result_F >= 201 && result_F <= 800) {
+    mov_fnt();
+    Serial.println("fogo longe...");
+    digitalWrite(LED_VERMELHO, HIGH);
+    digitalWrite(LED_VERDE, LOW);
   }
-   else if(patrulha == 12 ){
-    mov_patrulha();
-    patrulha = 0; 
-  }
+  else if ( patrulha >= 30){
+    Serial.println("modo patrulha");
+    patrulha();
+      }
   else{
     parar();
     Serial.println("nenhum fogo detectado");
-    patrulha++;
+    digitalWrite(LED_VERMELHO, LOW);
+    digitalWrite(LED_VERDE, HIGH);
+    patrulha++; 
   }
   
   delay(1000);
@@ -190,7 +213,6 @@ void manobra_E() {
 
 void mov_patrulha(){
   Serial.println("carrinho entrando no modo patrulha....");
-
   int vel = random(0,6);
 
   switch(vel){
@@ -208,19 +230,24 @@ void mov_patrulha(){
     }
     case 4: {
       manobra_E();
+      
       break;
     }
     case 5: {
       //virando 360
       mov_dir();
+      delay(1000);
       mov_dir();
+      delay(1000);
       break;
     }
     case 6: {
       mov_esq();
+      delay(1000);
       mov_esq();
+      delay(1000);
       break;
     }
   }
+  patrulha = 0;
 }
-
