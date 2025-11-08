@@ -90,12 +90,14 @@ void loop() {
     Serial.println("virando para esquerda");\
     digitalWrite(LED_VERMELHO, HIGH);
     digitalWrite(LED_VERDE, LOW);
+    patrulha = 0;
   }
   else if (result_D < 700){
     manobra_D();
     Serial.println("virando para direita");
     digitalWrite(LED_VERMELHO, HIGH);
     digitalWrite(LED_VERDE, LOW);
+    patrulha = 0;
     }
   else if (result_F <= 200) {
     Serial.println("fogo bem perto...");
@@ -105,14 +107,16 @@ void loop() {
     delay(2000);
     digitalWrite(LED_VERMELHO, HIGH);
     digitalWrite(LED_VERDE, LOW);
+    patrulha = 0;
     }
   else if (result_F >= 201 && result_F <= 800) {
     mov_fnt();
     Serial.println("fogo longe...");
     digitalWrite(LED_VERMELHO, HIGH);
     digitalWrite(LED_VERDE, LOW);
+    patrulha = 0;
   }
-  else if ( patrulha >= 30){
+  else if ( patrulha >= 25){
     Serial.println("modo patrulha");
     mov_patrulha();
       }
