@@ -1,0 +1,201 @@
+#include <math.h>
+#include <Servo.h>
+
+//motor lado direito
+const int enA = 10;
+const int in1 = 9;
+const int in2 = 8;
+//motor lado esquerdo
+const int enB = 4;
+const int in3 = 6;
+const int in4 = 5;
+
+int velocidade = 200;
+
+//sensores
+int sensor_F = A1;
+int sensor_E = A2;
+int sensor_D = A0;
+
+int vetor_F[3]; 
+int vetor_E[3]; 
+int vetor_D[3]; 
+
+int result_F;
+int result_E;
+int result_D;
+
+int Servo = 2;
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(enA, OUTPUT);
+  pinMode(enB, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
+
+  analogWrite(enA, velocidade);
+  analogWrite(enB, velocidade);
+
+  parar(); // começa parado
+
+  pinMode(sensor_F, INPUT);
+  pinMode(sensor_E, INPUT);
+  pinMode(sensor_D, INPUT);
+
+  meuServo.attach(Servo);
+}
+
+void loop() {
+  // faz 3 leituras do sensor
+  for (int i = 0; i < 3; i++) { 
+    vetor_F[i] = analogRead(sensor_F);
+  }
+   for (int i = 0; i < 3; i++) { 
+    vetor_E[i] = analogRead(sensor_E);
+  }
+   for (int i = 0; i < 3; i++) { 
+    vetor_D[i] = analogRead(sensor_D);
+  }
+ 
+  // calcula a média das leituras
+  result_F = media(vetor_F[0],  vetor_F[1],  vetor_F[2]);
+  result_E = media(vetor_E[0], vetor_E[1], vetor_E[2]);
+  result_D = media(vetor_D[0], vetor_D[1], vetor_D[2]);
+
+  // analisa o resultado
+  if (result_F <= 200) {
+    parar();
+    Serial.println("fogo bem perto...");
+  }
+
+  else if (result_F >= 201 && result_F <= 800) {
+    mov_fnt();
+    Serial.println("fogo longe...");
+  }
+
+  else if ( result_E < 700){
+    manobra_E();
+    Serial.println("virando para esquerda");
+  }
+
+  else if (result_D < 700){
+    manobra_D();
+    Serial.println("virando para direita");
+  }
+  else{
+    parar();
+    Serial.println("nenhum fogo detectado");
+  }
+  
+  delay(1000);
+}
+
+// função para calcular média
+int media(int a, int b, int c) {
+  int resultado = (a + b + c) / 3;
+  return resultado;
+}
+
+//Movimentos
+void mov_fnt(){
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+}
+void mov_tras(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+}
+void mov_dir(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+}
+void mov_esq(){
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+}
+void parar(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, LOW);
+}
+
+void manobra_D() {
+  mov_tras();
+  delay(1000);
+
+  parar();
+  delay(300);
+
+  mov_dir();
+  delay(200);
+
+  mov_fnt();
+  delay(1000);
+
+  parar();
+}
+
+void manobra_E() {
+  mov_tras();
+  delay(1000);
+
+  parar();
+  delay(300);
+
+  mov_esq();
+  delay(200);
+
+  mov_fnt();
+  delay(1500);
+
+  parar();
+}
+
+void mov_patrulha(){
+  Serial.println("carrinho entrando no modo patrulha....");
+
+  int vel = random(0,6);
+
+  switch(vel){
+    case 1: {
+      mov_fnt();
+      break;
+    }
+    case 2: {
+      mov_tras();
+      break;
+    }
+    case 3:{
+      manobra_D();
+      break;
+    }
+    case 4: {
+      manobra_E();
+      break;
+    }
+    case 5: {
+      //virando 360
+      mov_dir();
+      mov_dir();
+      break;
+    }
+    case 6: {
+      mov_esq();
+      mov_esq();
+      break;
+    }
+  }
+}
