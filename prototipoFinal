@@ -1,272 +1,220 @@
-#include <Servo.h>
+#include <math.h>
 
-// === CONFIGURAÇÕES GERAIS ===
-const bool DEBUG = true; // coloque false para desativar prints no Serial
+//sensor de fogo
+int vetorFrente[3]; 
+int vetorEsquerdo[3]; 
+int vetorDireito[3]; 
 
-// === PROTÓTIPOS ===
-void andar(int velocidade = 180);
-void andarSuave(int alvoVelocidade = 180);
-void parar();
-void curvaSuave(bool direita, int velocidadeMax = 100, int duracao = 300);
-void re(int velocidade = 180);
-int mediaLeitura(int pino, int id);
-void patrulhar();
+int sensorFrente;
+int sensorEsquerdo;
+int sensorDireito;
 
-// === SENSORES DE FOGO ===
-#define sensorFogoEsquerdo A2
-#define sensorFogoFrente   A1
-#define sensorFogoDireita  A0
+int resultadoSensorFrente;
+int resultadoSensorEsquerdo;
+int resultadoSensorDireito;
+int visualizar;
 
-// === BOMBA E SERVO ===
-#define bombaDeAgua A5
-#define SERVO_PIN 2
-Servo meuServo;
-int posicao;
+int patrulha;
 
-// === PONTE H ===
-#define ENA 10
-#define EN1 9
-#define EN2 8
-#define EN3 6
-#define EN4 5
-#define ENB 4
+//motor lado direito
+const int enA = 10;
+const int in1 = 9;
+const int in2 = 8;
+//motor lado esquerdo
+const int enB = 4;
+const int in3 = 6;
+const int in4 = 5;
 
-// === VARIÁVEIS ===
-int valorSensorEsquerdo;
-int valorSensorFrente;
-int valorSensorDireito;
-unsigned long tempoFogoDetectado = 0;
-int contagemFogo = 0;
+int velocidade = 200;
 
-// === LIMIARES ===
-int LIMIAR_SEM_FOGO = 700;
-int LIMIAR_FOGO_LONGE = 500;
-int LIMIAR_FOGO_PERTO = 300;
-const int MARGEM_HISTERESIS = 50;
-
-// === FILTROS SUAVIZADOS (individuais) ===
-float suavizadoEsq = 0;
-float suavizadoFrente = 0;
-float suavizadoDir = 0;
-
-// === CONFIGURAÇÃO ===
 void setup() {
   Serial.begin(9600);
 
-  meuServo.attach(SERVO_PIN);
-  meuServo.write(90);
+  //sensor
+  pinMode(sensorFrente, INPUT);
+  pinMode(sensorEsquerdo, INPUT);
+  pinMode(sensorDireito, INPUT);
 
-  pinMode(sensorFogoEsquerdo, INPUT);
-  pinMode(sensorFogoFrente, INPUT);
-  pinMode(sensorFogoDireita, INPUT);
+  // motor rodas
+  pinMode(enA, OUTPUT);
+  pinMode(enB, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
 
-  pinMode(EN1, OUTPUT);
-  pinMode(EN2, OUTPUT);
-  pinMode(EN3, OUTPUT);
-  pinMode(EN4, OUTPUT);
-  pinMode(ENA, OUTPUT);
-  pinMode(ENB, OUTPUT);
+  analogWrite(enA, velocidade);
+  analogWrite(enB, velocidade);
 
-  pinMode(bombaDeAgua, OUTPUT);
-  digitalWrite(bombaDeAgua, LOW);
-
-  randomSeed(analogRead(0));
-
-  if (DEBUG) Serial.println("🔥 Sistema de detecção de fogo iniciado...");
+  parar(); // começa parado
 }
 
-// === LOOP PRINCIPAL ===
+//Loop principal
 void loop() {
-  valorSensorEsquerdo = mediaLeitura(sensorFogoEsquerdo, 0);
-  valorSensorFrente   = mediaLeitura(sensorFogoFrente, 1);
-  valorSensorDireito  = mediaLeitura(sensorFogoDireita, 2);
-
-  if (DEBUG) {
-    Serial.print("Esq: "); Serial.print(valorSensorEsquerdo);
-    Serial.print(" | Frente: "); Serial.print(valorSensorFrente);
-    Serial.print(" | Dir: "); Serial.println(valorSensorDireito);
+  visualizar = analogRead(sensorFrente);
+  // faz 3 leituras do sensor
+  for (int i = 0; i < 3; i++) { 
+    vetorFrente[i] = analogRead(sensorFrente);
   }
-
-  // Evita leituras bugadas (sensor desconectado)
-  if (valorSensorEsquerdo == 0 && valorSensorFrente == 0 && valorSensorDireito == 0) {
-    parar();
-    Serial.println("⚠ Erro: sensores desconectados!");
-    delay(500);
-    return;
+   for (int i = 0; i < 3; i++) { 
+    vetorEsquerdo[i] = analogRead(sensorEsquerdo);
   }
-
-  // === Nenhum fogo detectado ===
-  if (valorSensorEsquerdo >= LIMIAR_SEM_FOGO &&
-      valorSensorFrente >= LIMIAR_SEM_FOGO &&
-      valorSensorDireito >= LIMIAR_SEM_FOGO) {
-    contagemFogo = 0;
-    patrulhar();
-    return;
+   for (int i = 0; i < 3; i++) { 
+    vetorDireito[i] = analogRead(sensorDireito);
   }
+ 
 
-  // === Determinar onde está o fogo (menor valor = mais forte) ===
-  int menorValor = min(valorSensorEsquerdo, min(valorSensorFrente, valorSensorDireito));
-  if (abs(valorSensorFrente - menorValor) < MARGEM_HISTERESIS)
-    menorValor = valorSensorFrente;
+  // calcula a média das leituras
+  resultadoSensorFrente = media( vetorFrente[0],  vetorFrente[1],  vetorFrente[2]);
+  resultadoSensorEsquerdo = media(vetorEsquerdo[0], vetorEsquerdo[1], vetorEsquerdo[2]);
+  resultadoSensorDireito = media(vetorDireito[0], vetorDireito[1], vetorDireito[2]);
 
-  // === Lógica de alinhamento e aproximação ===
-  if (menorValor == valorSensorFrente) {
-    if (DEBUG) Serial.println("🔥 Fogo à FRENTE!");
-
-    if (valorSensorFrente < LIMIAR_FOGO_LONGE && valorSensorFrente > LIMIAR_FOGO_PERTO) {
-      if (DEBUG) Serial.println("➡ Aproximando do fogo (distância média)...");
-      andarSuave(130);
-      tempoFogoDetectado = millis();
-    }
-
-    if (valorSensorFrente < LIMIAR_FOGO_PERTO)
-      contagemFogo++;
-    else if (valorSensorFrente > LIMIAR_FOGO_LONGE + 100)
-      contagemFogo = 0;
-
-    if (contagemFogo > 4 && millis() - tempoFogoDetectado > 1000) {
-      if (DEBUG) Serial.println("🚒 Fogo MUITO PRÓXIMO! Ativando bomba...");
-
+  // analisa o resultado
+   if (resultadoSensorFrente <= 210) {
+    Serial.println("fogo bem perto...");
+    Serial.println(visualizar);
       parar();
-      digitalWrite(bombaDeAgua, HIGH);
-      unsigned long inicioBomba = millis();
 
-      // Movimento de varredura da água
-      for (int ang = 60; ang <= 120; ang += 5) {
-        meuServo.write(ang);
-        delay(70);
-      }
-      for (int ang = 120; ang >= 60; ang -= 5) {
-        meuServo.write(ang);
-        delay(70);
-      }
-
-      // segurança: desligar bomba após 3s
-      if (millis() - inicioBomba > 3000) {
-        digitalWrite(bombaDeAgua, LOW);
-        if (DEBUG) Serial.println("💧 Bomba desligada (tempo limite)");
-      } else {
-        digitalWrite(bombaDeAgua, LOW);
-      }
-
-      // Recuo leve
-      re(100);
-      delay(400);
-      parar();
-      delay(400);
-      contagemFogo = 0;
     }
-  }
-  else if (menorValor == valorSensorEsquerdo) {
-    if (DEBUG) Serial.println("🔥 Fogo à ESQUERDA! Alinhando...");
-    curvaSuave(false, 80, 400);
-  }
-  else if (menorValor == valorSensorDireito) {
-    if (DEBUG) Serial.println("🔥 Fogo à DIREITA! Alinhando...");
-    curvaSuave(true, 80, 400);
+
+  else if (resultadoSensorFrente >= 210 && resultadoSensorFrente <= 800) {
+      Serial.println("fogo longe...");
+      Serial.println(visualizar);
+      mov_fnt();
   }
 
-  delay(60);
+  else if ( resultadoSensorEsquerdo < 700){
+    //carrinho ira virar
+    Serial.println("virando para esquerda");
+    manobraEsquerda();
+  }
+
+  else if (resultadoSensorDireito < 700){
+    Serial.println("virando para direita");
+    manobraDireita();
+  }
+
+  else if(patrulha == 3 ){
+    mov_patrulha();
+    patrulha = 0; 
+  }
+  else{
+    Serial.println("nenhum fogo detectado");
+    patrulha++;
+  }
+  
+  delay(2000);
 }
 
-// === MÉDIA SUAVIZADA ===
-int mediaLeitura(int pino, int id) {
-  float leitura = analogRead(pino);
-
-  if (id == 0) suavizadoEsq = (suavizadoEsq * 0.7) + (leitura * 0.3);
-  if (id == 1) suavizadoFrente = (suavizadoFrente * 0.7) + (leitura * 0.3);
-  if (id == 2) suavizadoDir = (suavizadoDir * 0.7) + (leitura * 0.3);
-
-  return (id == 0) ? (int)suavizadoEsq : (id == 1) ? (int)suavizadoFrente : (int)suavizadoDir;
+// função para calcular média
+int media(int a, int b, int c) {
+  int resultado = (a + b + c) / 3;
+  return resultado;
 }
 
-// === MOVIMENTOS ===
-void andar(int velocidade) {
-  digitalWrite(EN1, HIGH);
-  digitalWrite(EN2, LOW);
-  digitalWrite(EN3, LOW);
-  digitalWrite(EN4, HIGH);
-  analogWrite(ENA, velocidade);
-  analogWrite(ENB, velocidade);
+//Movimentos
+void mov_fnt(){
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+  delay(1000);
+}
+void mov_tras(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+  delay(1000);
+}
+void mov_dir(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+  delay(1000);
+}
+void mov_esq(){
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+  delay(1000);
+}
+void parar(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, LOW);
+  delay(1000);
 }
 
-void andarSuave(int alvoVelocidade) {
-  for (int v = 0; v <= alvoVelocidade; v += 10) {
-    andar(v);
-    delay(15);
-  }
-}
+void manobraDireita() {
+  // anda pra trás um pouquinho
+  mov_tras();
 
-void re(int velocidade) {
-  digitalWrite(EN1, LOW);
-  digitalWrite(EN2, HIGH);
-  digitalWrite(EN3, HIGH);
-  digitalWrite(EN4, LOW);
-  analogWrite(ENA, velocidade);
-  analogWrite(ENB, velocidade);
-}
+  // para rapidamente
+  parar();
 
-void curvaSuave(bool direita, int velocidadeMax, int duracao) {
-  int incremento = 8;
-  for (int v = 0; v <= velocidadeMax; v += incremento) {
-    if (direita) {
-      digitalWrite(EN1, HIGH);
-      digitalWrite(EN2, LOW);
-      digitalWrite(EN3, LOW);
-      digitalWrite(EN4, LOW);
-      analogWrite(ENA, v);
-      analogWrite(ENB, v / 4);
-    } else {
-      digitalWrite(EN1, LOW);
-      digitalWrite(EN2, LOW);
-      digitalWrite(EN3, LOW);
-      digitalWrite(EN4, HIGH);
-      analogWrite(ENA, v / 4);
-      analogWrite(ENB, v);
-    }
-    delay(12);
-  }
-  delay(duracao);
-  // desacelera suavemente
-  for (int v = velocidadeMax; v >= 0; v -= 10) {
-    analogWrite(ENA, v);
-    analogWrite(ENB, v);
-    delay(10);
-  }
+  // vira pra direita
+  mov_dir();
+
+  // e volta a seguir em frente
+  mov_fnt();
+
   parar();
 }
 
-void parar() {
-  digitalWrite(EN1, LOW);
-  digitalWrite(EN2, LOW);
-  digitalWrite(EN3, LOW);
-  digitalWrite(EN4, LOW);
-  analogWrite(ENA, 0);
-  analogWrite(ENB, 0);
-}
+void manobraEsquerda() {
+  // anda pra trás um pouquinho
+  mov_tras();
+  delay(1000);
 
-// === MODO PATRULHA ALEATÓRIA ===
-void patrulhar() {
-  int movimento = random(0, 100);
-  int vel = random(60, 85);
-  meuServo.write(random(70, 110));
+  // para rapidamente
+  parar();
+  delay(300);
 
-  if (movimento < 60) {
-    andar(vel);
-    if (DEBUG) Serial.println("🚗 Patrulha: andando devagar...");
-    delay(random(1000, 2500));
-  } else if (movimento < 75) {
-    curvaSuave(false, vel, random(300, 700));
-    if (DEBUG) Serial.println("↩ Patrulha: virando esquerda...");
-  } else if (movimento < 90) {
-    curvaSuave(true, vel, random(300, 700));
-    if (DEBUG) Serial.println("↪ Patrulha: virando direita...");
-  } else {
-    re(vel);
-    if (DEBUG) Serial.println("🔙 Patrulha: dando ré leve...");
-    delay(random(400, 900));
-  }
+  // vira pra esquerda
+  mov_esq();
+  delay(800);
+
+  // e volta a seguir em frente
+  mov_fnt();
+  delay(1500);
 
   parar();
-  delay(random(400, 1000));
 }
+
+void mov_patrulha(){
+  Serial.println("carrinho entrando no modo patrulha....");
+
+  int vel = random(0,5);
+
+  switch(vel){
+    case 1: {
+      mov_fnt();
+
+      break;
+    }
+    case 2: {
+      mov_tras();
+
+      break;
+    }
+    case 3:{
+      mov_dir();
+      break;
+    }
+    case 4: {
+      mov_esq();
+      break;
+    }
+    case 5: {
+      //virando 360
+      mov_dir();
+      mov_dir();
+      break;
+    }
+  }
+}
+
