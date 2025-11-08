@@ -114,7 +114,7 @@ void loop() {
   }
   else if ( patrulha >= 30){
     Serial.println("modo patrulha");
-    patrulha();
+    mov_patrulha();
       }
   else{
     parar();
