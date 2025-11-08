@@ -114,3 +114,36 @@ void manobraEsquerda() {
 
   parar();
 }
+
+void mov_patrulha(){
+  Serial.println("carrinho entrando no modo patrulha....");
+
+  int vel = random(0,5);
+
+  switch(vel){
+    case 1: {
+      mov_frente();
+
+      break;
+    }
+    case 2: {
+      mov_re();
+
+      break;
+    }
+    case 3:{
+      mov_direita();
+      break;
+    }
+    case 4: {
+      mov_esquerda();
+      break;
+    }
+    case 5: {
+      //virando 360
+      mov_direita();
+      mov_direita();
+      break;
+    }
+  }
+}
