@@ -86,8 +86,8 @@ void loop() {
   // analisa o resultado
   if (result_F <= 200) {
     parar();
-    servo();
     digitalWrite(bomba, 1);
+    servo();
     Serial.println("fogo bem perto...");
     digitalWrite(LED_VERMELHO, HIGH);
     digitalWrite(LED_VERDE, LOW);
