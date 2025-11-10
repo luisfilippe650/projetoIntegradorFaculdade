@@ -1,16 +1,15 @@
 #include <math.h>
-#include <Servo.h>
 
 //motor lado direito
-const int enA = 11;
-const int in1 = 7;
+const int enA = 10;
+const int in1 = 9;
 const int in2 = 8;
 //motor lado esquerdo
-const int enB = 4;
-const int in3 = 6;
-const int in4 = 5;
+const int enB = 5;
+const int in3 = 7;
+const int in4 = 6;
 
-int velocidade = 200;
+int velocidade = 160;
 
 int patrulha = 0;
 
@@ -28,9 +27,8 @@ int result_E;
 int result_D;
 
 #define bomba A5
-#define SERVO_PIN 3
-Servo meuServo;
-int posicao;
+#define SERVO_PIN A4
+int position;
 
 #define LED_VERMELHO 12
 #define LED_VERDE 13
@@ -54,8 +52,8 @@ void setup() {
   pinMode(sensor_E, INPUT);
   pinMode(sensor_D, INPUT);
 
-  meuServo.attach(SERVO_PIN);
-  meuServo.write(0);
+  pinMode(SERVO_PIN, OUTPUT);
+  servoPulse(SERVO_PIN, position);
 
   pinMode(bomba, OUTPUT);
 
@@ -70,11 +68,7 @@ void loop() {
   // faz 3 leituras do sensor
   for (int i = 0; i < 3; i++) { 
     vetor_F[i] = analogRead(sensor_F);
-  }
-   for (int i = 0; i < 3; i++) { 
     vetor_E[i] = analogRead(sensor_E);
-  }
-   for (int i = 0; i < 3; i++) { 
     vetor_D[i] = analogRead(sensor_D);
   }
  
@@ -86,8 +80,8 @@ void loop() {
   // analisa o resultado
   if (result_F <= 200) {
     parar();
-    digitalWrite(bomba, 1);
     servo();
+    digitalWrite(bomba, 0);
     Serial.println("fogo bem perto...");
     digitalWrite(LED_VERMELHO, HIGH);
     digitalWrite(LED_VERDE, LOW);
@@ -117,6 +111,7 @@ void loop() {
     digitalWrite(LED_VERDE, LOW);
   }
   else{
+    mov_tras();
     parar();
     digitalWrite(bomba, 0);
     Serial.println("nenhum fogo detectado");
@@ -124,7 +119,7 @@ void loop() {
     digitalWrite(LED_VERDE, HIGH);
   }
   
-  delay(1000);
+  delay(300);
 }
 
 // função para calcular média
@@ -133,18 +128,44 @@ int media(int a, int b, int c) {
   return resultado;
 }
 
-void servo(){
-  int position;
+void servoPulse(int pin, int angle) {
+  int pwm = (angle * 11) + 500;
+  digitalWrite(pin, HIGH);
+  delayMicroseconds(pwm);
+  digitalWrite(pin, LOW);
+  delay(20);
+}
 
-  for(position = 0; position <= 120; position++){
-    meuServo.write(position);
-    delay(15);
+void servo() {
+  int position;
+  digitalWrite(bomba, 1); 
+
+  // Gira o servo da posição 0 até 120 graus
+  for (position = 0; position <= 120; position++) {
+    servoPulse(SERVO_PIN, position);
+    result_F = analogRead(sensor_F);
+    if (result_F >= 201) {
+      digitalWrite(bomba, 0); 
+      return;
+    }
   }
-  for(position = 120; position >= 0; position--){
-    meuServo.write(position);
-    delay(15);
+
+  // Volta o servo de 120 até 0 graus
+  for (position = 120; position >= 0; position--) {
+    servoPulse(SERVO_PIN, position);
+    result_F = analogRead(sensor_F);
+    if (result_F > 200) {
+      digitalWrite(bomba, 0);
+      return;
+    }
   }
-  delay(1000);
+
+  result_F = analogRead(sensor_F);
+  if (result_F >= 201) {
+    digitalWrite(bomba, LOW);
+  } else {
+    digitalWrite(bomba, HIGH); 
+  }
 }
 
 //Movimentos
@@ -181,7 +202,7 @@ void parar(){
 
 void manobra_D() {
   mov_tras();
-  delay(1000);
+  delay(500);
 
   parar();
   delay(300);
@@ -197,7 +218,7 @@ void manobra_D() {
 
 void manobra_E() {
   mov_tras();
-  delay(1000);
+  delay(500);
 
   parar();
   delay(300);
@@ -206,51 +227,7 @@ void manobra_E() {
   delay(200);
 
   mov_fnt();
-  delay(1500);
+  delay(1000);
 
   parar();
 }
-
-/*void mov_patrulha(){
-  Serial.println("carrinho entrando no modo patrulha....");
-
-  int vel = random(0,6);
-
-  switch(vel){
-    case 1: {
-      mov_fnt();
-      delay(2000);
-      break;
-    }
-    case 2: {
-      mov_tras();
-      delay(2000);
-      break;
-    }
-    case 3:{
-      manobra_D();
-      delay(2000);
-      break;
-    }
-    case 4: {
-      manobra_E();
-      delay(2000);
-      break;
-    }
-    case 5: {
-      //virando 360
-      mov_dir();
-      delay(1000);
-      mov_dir();
-      delay(2000);
-      break;
-    }
-    case 6: {
-      mov_esq();
-      delay(1000);
-      mov_esq();
-      delay(2000);
-      break;
-    }
-  }
-}*/
