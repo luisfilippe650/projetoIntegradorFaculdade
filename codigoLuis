@@ -138,7 +138,7 @@ void servo() {
 
   do{
     result_F = analogRead(sensor_F);
-    digitalWrite(bomba, 1); 
+    digitalWrite(bomba, HIGH); 
   for (position = 0; position <= 120; position++) {
     servoPulse(SERVO_PIN, position); 
     }
@@ -146,9 +146,10 @@ void servo() {
     servoPulse(SERVO_PIN, position);
     result_F = analogRead(sensor_F);
   }
-  digitalWrite(bomba, 0);
+  digitalWrite(bomba, LOW);
   }while(result_F =< 200)
 
+  digitalWrite(bomba, LOW);
 }
 
 //Movimentos
