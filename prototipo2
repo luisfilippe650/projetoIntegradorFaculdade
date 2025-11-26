@@ -1,8 +1,8 @@
 #include <math.h>
 
 #define velocidade 100
-#define bomba A5
-#define SERVO_PIN A4
+#define bomba 2
+#define SERVO_PIN 13
 
 //motor lado direito
 const int enA = 10;
