@@ -5,29 +5,22 @@
 #define SERVO_PIN A4
 
 //motor lado direito
-const int enA = 10;
-const int in1 = 9;
-const int in2 = 8;
+#define enA 10
+#define in1 9
+#define in2 8
 //motor lado esquerdo
-const int enB = 5;
-const int in3 = 7;
-const int in4 = 6;
-
-int patrulha = 0;
+#define enB 5
+#define in3 7
+#define in4 6
 
 //sensores
-int sensor_F = A1;
-int sensor_E = A2;
-int sensor_D = A0;
+#define sensor_F A1
+#define sensor_E A2
+#define sensor_D A0
 
-int vetor_F[3]; 
-int vetor_E[3]; 
-int vetor_D[3]; 
+int result_F, result_E, result_D;
 
-int result_F;
-int result_E;
-int result_D;
-
+// ========================= SETUP =========================
 void setup() {
   Serial.begin(9600);
 
@@ -41,73 +34,95 @@ void setup() {
   analogWrite(enA, velocidade);
   analogWrite(enB, velocidade);
 
-  parar(); // começa parado
+  parar();
 
   pinMode(sensor_F, INPUT);
   pinMode(sensor_E, INPUT);
   pinMode(sensor_D, INPUT);
+
   pinMode(SERVO_PIN, OUTPUT);
   pinMode(bomba, OUTPUT);
 
-  // posição inicial do servo (corrigido)
-  servoPulse(SERVO_PIN, 0);   // posição inicial
+  // posição inicial do servo
+  servoPulse(SERVO_PIN, 90);
 }
 
+// ========================= LOOP =========================
 void loop() {
 
-  // --- 3 leituras para estabilidade ---
-  for (int i = 0; i < 3; i++) { 
-    vetor_F[i] = analogRead(sensor_F);
-    vetor_E[i] = analogRead(sensor_E);
-    vetor_D[i] = analogRead(sensor_D);
+  // --- leitura dos sensores com média simples ---
+  result_F = analogRead(sensor_F);
+  result_E = analogRead(sensor_E);
+  result_D = analogRead(sensor_D);
+
+  Serial.print(result_D); Serial.print("\t");
+  Serial.print(result_F); Serial.print("\t");
+  Serial.println(result_E);
+
+  // ========================== PRIORIDADES ===============================
+
+  // 1️⃣ FOGO MUITO PERTO — APAGAR AGORA
+  if (result_F < 220 || result_E < 200 || result_D < 200) {
+    apagarFogo();
+    return;
   }
 
-  // --- médias ---
-  result_F = media(vetor_F[0], vetor_F[1], vetor_F[2]);
-  result_E = media(vetor_E[0], vetor_E[1], vetor_E[2]);
-  result_D = media(vetor_D[0], vetor_D[1], vetor_D[2]);
-
-
-  // PRIORIDADE 1 → fogo muito perto na frente
-  if (result_F <= 200) {  
-    parar();
-    Serial.println("🔥 Fogo MUITO perto!");
-    servo();
-    return;   // evita que execute outras decisões
-  }
-
-  // PRIORIDADE 2 → fogo visível longe na frente
-  if (result_F > 200 && result_F <= 800) {
-    Serial.println("🔥 Fogo à frente, indo em direção...");
+  // 2️⃣ FOGO À FRENTE LONGE — IR EM DIREÇÃO
+  if (result_F >= 220 && result_F <= 700) {
+    digitalWrite(bomba, LOW);
     mov_fnt();
     return;
   }
 
-  // PRIORIDADE 3 → fogo à esquerda
-  if (result_E < 700) {
-    Serial.println("↩️ Virando à esquerda");
-    manobra_E();
+  // 3️⃣ FOGO À ESQUERDA LONGE — AJUSTAR ROTA CURTO
+  if (result_E >= 220 && result_E <= 700) {
+    digitalWrite(bomba, LOW);
+    smallLeft();
     return;
   }
 
-  // PRIORIDADE 4 → fogo à direita
-  if (result_D < 700) {
-    Serial.println("↪️ Virando à direita");
-    manobra_D();
+  // 4️⃣ FOGO À DIREITA LONGE — AJUSTAR ROTA CURTO
+  if (result_D >= 220 && result_D <= 700) {
+    digitalWrite(bomba, LOW);
+    smallRight();
     return;
   }
 
-  // PRIORIDADE 5 → nenhum sinal significativo
-  Serial.println("⚪ Nenhum fogo detectado");
+  // 5️⃣ NADA — PARAR
   parar();
 }
 
-// função para calcular média
-int media(int a, int b, int c) {
-  int resultado = (a + b + c) / 3;
-  return resultado;
+// ======================= FUNÇÃO DE APAGAR FOGO =========================
+void apagarFogo() {
+  parar();
+  digitalWrite(bomba, HIGH);
+
+  // Varredura eficiente que cobre toda a área
+  for (int pos = 90; pos <= 140; pos += 3) servoPulse(SERVO_PIN, pos);
+  for (int pos = 140; pos >= 40; pos -= 3) servoPulse(SERVO_PIN, pos);
+  for (int pos = 40; pos <= 95; pos += 3) servoPulse(SERVO_PIN, pos);
+
+  digitalWrite(bomba, LOW);
 }
 
+// ======================= MOVIMENTOS CURTOS ==============================
+void smallLeft() {
+  backword();
+  delay(80);
+  mov_esq();
+  delay(120);
+  parar();
+}
+
+void smallRight() {
+  backword();
+  delay(80);
+  mov_dir();
+  delay(120);
+  parar();
+}
+
+// ======================= SERVO PWM =====================================
 void servoPulse(int pin, int angle) {
   int pwm = (angle * 11) + 500;
   digitalWrite(pin, HIGH);
@@ -116,85 +131,36 @@ void servoPulse(int pin, int angle) {
   delay(20);
 }
 
-//arrumado
-void servo() {
-
-  int position;
-  
-  digitalWrite(bomba, HIGH); 
-
-  for (position = 0; position <= 120; position++) {
-    servoPulse(SERVO_PIN, position); 
-    }
-
-  for (position = 120; position >= 0; position--) {
-    servoPulse(SERVO_PIN, position);
-    result_F = analogRead(sensor_F);
-  }
-
-  digitalWrite(bomba, LOW);
-}
-
-//Movimentos
-void mov_fnt(){
+// ======================= MOVIMENTOS ====================================
+void mov_fnt() {
   digitalWrite(in1, HIGH);
   digitalWrite(in2, LOW);
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
 }
-void mov_tras(){
+void mov_tras() {
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
   digitalWrite(in3, HIGH);
   digitalWrite(in4, LOW);
 }
-void mov_dir(){
+void mov_dir() {
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
 }
-void mov_esq(){
+void mov_esq() {
   digitalWrite(in1, HIGH);
   digitalWrite(in2, LOW);
   digitalWrite(in3, HIGH);
   digitalWrite(in4, LOW);
 }
-void parar(){
+void backword() { mov_tras(); }
+
+void parar() {
   digitalWrite(in1, LOW);
   digitalWrite(in2, LOW);
   digitalWrite(in3, LOW);
   digitalWrite(in4, LOW);
-}
-
-void manobra_D() {
-  mov_tras();
-  delay(500);
-
-  parar();
-  delay(300);
-
-  mov_dir();
-  delay(200);
-
-  mov_fnt();
-  delay(1000);
-
-  parar();
-}
-
-void manobra_E() {
-  mov_tras();
-  delay(500);
-
-  parar();
-  delay(300);
-
-  mov_esq();
-  delay(200);
-
-  mov_fnt();
-  delay(1000);
-
-  parar();
 }
