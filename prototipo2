@@ -66,7 +66,6 @@ void loop() {
   result_E = media(vetor_E[0], vetor_E[1], vetor_E[2]);
   result_D = media(vetor_D[0], vetor_D[1], vetor_D[2]);
 
-  // detectar qual é o mais forte (menor valor)
   int menor = min(result_F, min(result_E, result_D));
 
   Serial.print("F: "); Serial.print(result_F);
@@ -80,26 +79,28 @@ void loop() {
     return;
   }
 
-  // se o fogo está mais forte na frente
+  //  nenhum fogo detectado em sensor nenhum
+  if (result_F > 850 && result_E > 850 && result_D > 850) {
+    parar();
+    Serial.println("Nenhum fogo detectado");
+    return;
+  }
+
+  // → fogo longe, seguir direção do mais forte
   if (menor == result_F) {
     mov_fnt();
     Serial.println("indo em direção ao fogo (frente)");
   }
-  // se o fogo está mais forte à esquerda
   else if (menor == result_E) {
     manobra_E();
     Serial.println("virando para esquerda");
   }
-  // se o fogo está mais forte à direita
   else if (menor == result_D) {
     manobra_D();
     Serial.println("virando para direita");
   }
-  else {
-    parar();
-    Serial.println("nenhum fogo detectado");
-  }
 }
+
 
 
 void servoPulse(int pin, int angle) {
