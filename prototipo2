@@ -1,177 +1,193 @@
-#include <Servo.h>
+#include <math.h>
 
-// === PROTÓTIPOS ===
-void andar();
-void parar();
-void direita();
-void esquerda();
-void servomotor();
-int mediaLeitura(int pino);
+#define velocidade 100
+#define bomba A5
+#define SERVO_PIN A4
 
-// === SENSORES DE FOGO ===
-#define sensorFogoEsquerdo A2
-#define sensorFogoFrente   A1
-#define sensorFogoDireita  A0
+//motor lado direito
+const int enA = 10;
+const int in1 = 9;
+const int in2 = 8;
+//motor lado esquerdo
+const int enB = 5;
+const int in3 = 7;
+const int in4 = 6;
 
-// === BOMBA E SERVO ===
-#define bombaDeAgua A5
-#define SERVO_PIN 2
-Servo meuServo;
-int posicao;
+int patrulha = 0;
 
-// === PONTE H ===
-#define ENA 10
-#define EN1 9
-#define EN2 8
-#define EN3 6
-#define EN4 5
-#define ENB 4
+//sensores
+int sensor_F = A1;
+int sensor_E = A2;
+int sensor_D = A0;
 
-// === VARIÁVEIS ===
-int valorSensorEsquerdo;
-int valorSensorFrente;
-int valorSensorDireito;
+int vetor_F[3]; 
+int vetor_E[3]; 
+int vetor_D[3]; 
 
-// === CONFIGURAÇÃO ===
+int result_F;
+int result_E;
+int result_D;
+
 void setup() {
   Serial.begin(9600);
 
-  // Servo
-  meuServo.attach(SERVO_PIN);
-  meuServo.write(0);
+  pinMode(enA, OUTPUT);
+  pinMode(enB, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
 
-  // Sensores
-  pinMode(sensorFogoEsquerdo, INPUT);
-  pinMode(sensorFogoFrente, INPUT);
-  pinMode(sensorFogoDireita, INPUT);
+  analogWrite(enA, velocidade);
+  analogWrite(enB, velocidade);
 
-  // Motores
-  pinMode(EN1, OUTPUT);
-  pinMode(EN2, OUTPUT);
-  pinMode(EN3, OUTPUT);
-  pinMode(EN4, OUTPUT);
-  pinMode(ENA, OUTPUT);
-  pinMode(ENB, OUTPUT);
+  parar(); // começa parado
 
-  // Bomba
-  pinMode(bombaDeAgua, OUTPUT);
+  pinMode(sensor_F, INPUT);
+  pinMode(sensor_E, INPUT);
+  pinMode(sensor_D, INPUT);
+  pinMode(SERVO_PIN, OUTPUT);
+  pinMode(bomba, OUTPUT);
 
-  Serial.println("🔥 Sistema de detecção de fogo iniciado...");
+  servoPulse(SERVO_PIN, position);
 }
 
-// === LOOP PRINCIPAL ===
 void loop() {
-  valorSensorEsquerdo = mediaLeitura(sensorFogoEsquerdo);
-  valorSensorFrente   = mediaLeitura(sensorFogoFrente);
-  valorSensorDireito  = mediaLeitura(sensorFogoDireita);
+  // 3 leituras
+  for (int i = 0; i < 3; i++) { 
+    vetor_F[i] = analogRead(sensor_F);
+    vetor_E[i] = analogRead(sensor_E);
+    vetor_D[i] = analogRead(sensor_D);
+  }
 
-  Serial.print("Esq: ");
-  Serial.print(valorSensorEsquerdo);
-  Serial.print(" | Frente: ");
-  Serial.print(valorSensorFrente);
-  Serial.print(" | Dir: ");
-  Serial.println(valorSensorDireito);
+  // médias
+  result_F = media(vetor_F[0], vetor_F[1], vetor_F[2]);
+  result_E = media(vetor_E[0], vetor_E[1], vetor_E[2]);
+  result_D = media(vetor_D[0], vetor_D[1], vetor_D[2]);
 
-  int LIMIAR_DETECCAO = 500; // fogo detectado
-  int LIMIAR_PERTO = 250;    // fogo muito próximo
+  // detectar qual é o mais forte (menor valor)
+  int menor = min(result_F, min(result_E, result_D));
 
-  // === Nenhum fogo detectado ===
-  if (valorSensorEsquerdo > LIMIAR_DETECCAO && valorSensorFrente > LIMIAR_DETECCAO && valorSensorDireito > LIMIAR_DETECCAO) {
+  Serial.print("F: "); Serial.print(result_F);
+  Serial.print("  E: "); Serial.print(result_E);
+  Serial.print("  D: "); Serial.println(result_D);
+
+  // fogo muito perto → apagar
+  if (result_F < 180) {
     parar();
-    Serial.println("Nenhum fogo detectado — aguardando...");
-    delay(200);
+    servo();
     return;
   }
 
-  int menorValor = min(valorSensorEsquerdo, min(valorSensorFrente, valorSensorDireito));
+  // se o fogo está mais forte na frente
+  if (menor == result_F) {
+    mov_fnt();
+    Serial.println("indo em direção ao fogo (frente)");
+  }
+  // se o fogo está mais forte à esquerda
+  else if (menor == result_E) {
+    manobra_E();
+    Serial.println("virando para esquerda");
+  }
+  // se o fogo está mais forte à direita
+  else if (menor == result_D) {
+    manobra_D();
+    Serial.println("virando para direita");
+  }
+  else {
+    parar();
+    Serial.println("nenhum fogo detectado");
+  }
+}
 
-  // === Fogo à frente ===
-  if (menorValor == valorSensorFrente) {
-    Serial.println("🔥 Fogo detectado à FRENTE!");
 
-    if (valorSensorFrente > LIMIAR_PERTO && valorSensorFrente < LIMIAR_DETECCAO) {
-      Serial.println("➡ Fogo à frente, aproximando...");
-      andar();
-    } 
-    else if (valorSensorFrente <= LIMIAR_PERTO) {
-      Serial.println("🚒 Fogo próximo! Ativando bomba e servo...");
-      parar();
-      digitalWrite(bombaDeAgua, HIGH);
-      servomotor();
-      delay(3000);
-      digitalWrite(bombaDeAgua, LOW);
+void servoPulse(int pin, int angle) {
+  int pwm = (angle * 11) + 500;
+  digitalWrite(pin, HIGH);
+  delayMicroseconds(pwm);
+  digitalWrite(pin, LOW);
+  delay(20);
+}
+
+//arrumado
+void servo() {
+
+  int position;
+  
+  digitalWrite(bomba, HIGH); 
+
+  for (position = 0; position <= 120; position++) {
+    servoPulse(SERVO_PIN, position); 
     }
-  } 
-  else if (menorValor == valorSensorEsquerdo) {
-    Serial.println("🔥 Fogo detectado à ESQUERDA! Virando...");
-    esquerda();
-  } 
-  else if (menorValor == valorSensorDireito) {
-    Serial.println("🔥 Fogo detectado à DIREITA! Virando...");
-    direita();
+
+  for (position = 120; position >= 0; position--) {
+    servoPulse(SERVO_PIN, position);
+    result_F = analogRead(sensor_F);
   }
 
-  delay(100);
+  digitalWrite(bomba, LOW);
 }
 
-// === FUNÇÃO DE MÉDIA ===
-int mediaLeitura(int pino) {
-  long soma = 0;
-  for (int i = 0; i < 5; i++) {
-    soma += analogRead(pino);
-    delay(3);
-  }
-  return soma / 5;
+//Movimentos
+void mov_fnt(){
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+}
+void mov_tras(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+}
+void mov_dir(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+}
+void mov_esq(){
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+}
+void parar(){
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, LOW);
 }
 
-// === FUNÇÃO SERVO ===
-void servomotor() {
-  for (posicao = 0; posicao <= 90; posicao++) {
-    meuServo.write(posicao);
-    delay(15);
-  }
+void manobra_D() {
+  mov_tras();
+  delay(500);
+
+  parar();
+  delay(300);
+
+  mov_dir();
+  delay(200);
+
+  mov_fnt();
   delay(1000);
 
-  for (posicao = 90; posicao >= 0; posicao--) {
-    meuServo.write(posicao);
-    delay(15);
-  }
+  parar();
+}
+
+void manobra_E() {
+  mov_tras();
+  delay(500);
+
+  parar();
+  delay(300);
+
+  mov_esq();
+  delay(200);
+
+  mov_fnt();
   delay(1000);
-}
 
-// === MOVIMENTOS ===
-void andar() {
-  digitalWrite(EN1, HIGH);
-  digitalWrite(EN2, LOW);
-  digitalWrite(EN3, HIGH);
-  digitalWrite(EN4, LOW);
-  analogWrite(ENA, 180);
-  analogWrite(ENB, 180);
-}
-
-void parar() {
-  digitalWrite(EN1, LOW);
-  digitalWrite(EN2, LOW);
-  digitalWrite(EN3, LOW);
-  digitalWrite(EN4, LOW);
-  analogWrite(ENA, 0);
-  analogWrite(ENB, 0);
-}
-
-void direita() {
-  digitalWrite(EN1, LOW);
-  digitalWrite(EN2, HIGH);
-  digitalWrite(EN3, HIGH);
-  digitalWrite(EN4, LOW);
-  analogWrite(ENA, 160);
-  analogWrite(ENB, 160);
-}
-
-void esquerda() {
-  digitalWrite(EN1, HIGH);
-  digitalWrite(EN2, LOW);
-  digitalWrite(EN3, LOW);
-  digitalWrite(EN4, HIGH);
-  analogWrite(ENA, 160);
-  analogWrite(ENB, 160);
+  parar();
 }
