@@ -1,5 +1,11 @@
 #include <math.h>
 
+#define velocidade 100
+#define bomba A5
+#define SERVO_PIN A4
+#define LED_VERMELHO 12
+#define LED_VERDE 13
+
 //motor lado direito
 const int enA = 10;
 const int in1 = 9;
@@ -8,8 +14,6 @@ const int in2 = 8;
 const int enB = 5;
 const int in3 = 7;
 const int in4 = 6;
-
-int velocidade = 160;
 
 int patrulha = 0;
 
@@ -26,12 +30,7 @@ int result_F;
 int result_E;
 int result_D;
 
-#define bomba A5
-#define SERVO_PIN A4
 int position;
-
-#define LED_VERMELHO 12
-#define LED_VERDE 13
 
 void setup() {
   Serial.begin(9600);
@@ -51,17 +50,10 @@ void setup() {
   pinMode(sensor_F, INPUT);
   pinMode(sensor_E, INPUT);
   pinMode(sensor_D, INPUT);
-
   pinMode(SERVO_PIN, OUTPUT);
-  servoPulse(SERVO_PIN, position);
-
   pinMode(bomba, OUTPUT);
 
-  pinMode(LED_VERMELHO, OUTPUT);
-  pinMode(LED_VERDE, OUTPUT);
-
-  digitalWrite(LED_VERMELHO, LOW);
-  digitalWrite(LED_VERDE, HIGH);
+  servoPulse(SERVO_PIN, position);
 }
 
 void loop() {
@@ -78,43 +70,30 @@ void loop() {
   result_D = media(vetor_D[0], vetor_D[1], vetor_D[2]);
 
   // analisa o resultado
-  if (result_F <= 200) {
+  if (result_F <= 180) {
     parar();
     servo();
     Serial.println("fogo bem perto...");
-    digitalWrite(LED_VERMELHO, HIGH);
-    digitalWrite(LED_VERDE, LOW);
   }
 
-  else if (result_F >= 201 && result_F <= 800) {
+  else if (result_F >= 181 && result_F <= 800) {
     mov_fnt();
     Serial.println("fogo longe...");
-    digitalWrite(LED_VERMELHO, HIGH);
-    digitalWrite(LED_VERDE, LOW);
   }
 
   else if ( result_E < 700){
+    Serial.println("virando para esquerda");
     manobra_E();
-    Serial.println("virando para esquerda");\
-    digitalWrite(LED_VERMELHO, HIGH);
-    digitalWrite(LED_VERDE, LOW);
   }
 
   else if (result_D < 700){
-    manobra_D();
     Serial.println("virando para direita");
-    digitalWrite(LED_VERMELHO, HIGH);
-    digitalWrite(LED_VERDE, LOW);
+    manobra_D();
   }
   else{
-    mov_tras();
     parar();
     Serial.println("nenhum fogo detectado");
-    digitalWrite(LED_VERMELHO, LOW);
-    digitalWrite(LED_VERDE, HIGH);
   }
-  
-  delay(300);
 }
 
 // função para calcular média
@@ -131,23 +110,21 @@ void servoPulse(int pin, int angle) {
   delay(20);
 }
 
+//arrumado
 void servo() {
+
   int position;
-
-  result_F = analogRead(sensor_F);
-
-  do{
-    result_F = analogRead(sensor_F);
+  
     digitalWrite(bomba, HIGH); 
+
   for (position = 0; position <= 120; position++) {
     servoPulse(SERVO_PIN, position); 
     }
+
   for (position = 120; position >= 0; position--) {
     servoPulse(SERVO_PIN, position);
     result_F = analogRead(sensor_F);
   }
-  digitalWrite(bomba, LOW);
-  }while(result_F =< 200)
 
   digitalWrite(bomba, LOW);
 }
