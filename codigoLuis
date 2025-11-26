@@ -3,8 +3,6 @@
 #define velocidade 100
 #define bomba A5
 #define SERVO_PIN A4
-#define LED_VERMELHO 12
-#define LED_VERDE 13
 
 //motor lado direito
 const int enA = 10;
@@ -29,8 +27,6 @@ int vetor_D[3];
 int result_F;
 int result_E;
 int result_D;
-
-int position;
 
 void setup() {
   Serial.begin(9600);
@@ -70,13 +66,13 @@ void loop() {
   result_D = media(vetor_D[0], vetor_D[1], vetor_D[2]);
 
   // analisa o resultado
-  if (result_F <= 180) {
+  if (result_F <= 200) {
     parar();
     servo();
     Serial.println("fogo bem perto...");
   }
 
-  else if (result_F >= 181 && result_F <= 800) {
+  else if (result_F >= 201 && result_F <= 800) {
     mov_fnt();
     Serial.println("fogo longe...");
   }
@@ -115,7 +111,7 @@ void servo() {
 
   int position;
   
-    digitalWrite(bomba, HIGH); 
+  digitalWrite(bomba, HIGH); 
 
   for (position = 0; position <= 120; position++) {
     servoPulse(SERVO_PIN, position); 
